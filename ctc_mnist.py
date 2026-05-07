@@ -25,5 +25,5 @@ args = parser.parse_args()
 args.ctc_model = CTC_MODEL
 args.data_name = DATA_NAME
 
-model, trainer = run_exp(args)
-test_results = trainer.test()
+model, trainer, data_module = run_exp(args)
+test_results = trainer.test(datamodule=data_module, ckpt_path="best")

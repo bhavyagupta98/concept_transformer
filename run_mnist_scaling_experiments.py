@@ -19,8 +19,8 @@ class BinaryMNISTS(Experiment):
         args = self.add_dependent_args(args)
 
         # Start experiment
-        model, trainer = run_exp(args)
-        test_results = trainer.test(ckpt_path='best')
+        model, trainer, data_module = run_exp(args)
+        test_results = trainer.test(datamodule=data_module, ckpt_path='best')
         trainer.logger.experiment.finish()
         del trainer, model
         return test_results[0]

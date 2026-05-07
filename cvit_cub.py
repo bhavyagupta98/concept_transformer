@@ -47,5 +47,5 @@ args.data_name = DATA_NAME
 torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
-model, trainer = run_exp(args)
-test_results = trainer.test()
+model, trainer, data_module = run_exp(args)
+test_results = trainer.test(datamodule=data_module, ckpt_path="best")

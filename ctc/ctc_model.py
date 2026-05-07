@@ -231,7 +231,7 @@ def run_exp(args):
     )
     trainer.fit(model, data_module)
 
-    return model, trainer
+    return model, trainer, data_module
 
 
 def get_trainer(max_epochs, logger, callbacks, amp=False, debug=False):
