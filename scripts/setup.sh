@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 # Minimal environment setup script for VM / Colab / k8s container
 # - creates a venv at /workspace/venv
 # - installs dependencies from requirements.txt (attempts to install torch wheel matching CUDA if requested)
 # - prepares datasets via datamodules
 # - optionally runs driver script
+
+set -eu
 
 PYTHON=${PYTHON:-python3}
 VENV_DIR=${VENV_DIR:-/workspace/venv}

@@ -11,36 +11,29 @@ spec:
       image: pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
       imagePullPolicy: IfNotPresent
       command:
-        - sh
+        - bash
         - -c
         - |
-          set -euo pipefail
-          # Clone repo if needed
-          if [ ! -d /workspace/.git ]; then
+          apt-get update && apt-get install -y git
+          # Clone repo into /workspace if not already there
+          if [ ! -d /workspace/concept_transformer ]; then
             if [ -n "${GIT_REPO:-}" ]; then
-              echo "Cloning ${GIT_REPO}..."
-              git clone "${GIT_REPO}" /workspace
+              echo "Cloning ${GIT_REPO} to /workspace/concept_transformer..."
+              cd /workspace && git clone "${GIT_REPO}" concept_transformer
             fi
           fi
-          cd /workspace
-          chmod +x scripts/setup.sh scripts/driver.sh 2>/dev/null || true
-          /workspace/scripts/setup.sh
+          echo "Repository ready at /workspace/concept_transformer"
+          echo "To run setup: kubectl exec -it pod/concept-transformer-gpu-runner -n seelab -- bash -c 'cd /workspace/concept_transformer && bash scripts/setup.sh'"
+          # Keep pod running
+          tail -f /dev/null
       resources:
         limits:
           nvidia.com/gpu: 1
       env:
         - name: CUDA_VERSION
           value: "11.8"
-        - name: RUN_DRIVER
-          value: "1"
         - name: GIT_REPO
           value: "https://github.com/bhavyagupta98/concept_transformer.git"
-        - name: RUN_MNIST
-          value: "1"
-        - name: RUN_CUB
-          value: "0"
-        - name: RUN_SCALING
-          value: "0"
       volumeMounts:
         - name: workspace
           mountPath: /workspace

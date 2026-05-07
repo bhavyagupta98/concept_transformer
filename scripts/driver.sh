@@ -1,11 +1,12 @@
 #!/usr/bin/env bash
-set -euo pipefail
 
 # Driver script to run key experiments in the repository.
 # Controlled by environment variables:
 #  RUN_MNIST (default 1) - run `ctc_mnist.py` smoke test
 #  RUN_CUB (default 0) - run `cvit_cub.py` (heavy)
 #  RUN_SCALING (default 0) - run `run_mnist_scaling_experiments.py` (heavy)
+
+set -eu
 
 RUN_MNIST=${RUN_MNIST:-1}
 RUN_CUB=${RUN_CUB:-0}
