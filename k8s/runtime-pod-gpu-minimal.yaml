@@ -47,6 +47,5 @@ spec:
 
   volumes:
     - name: workspace
-      hostPath:
-        path: /mnt/concept_transformer_workspace
-        type: DirectoryOrCreate
+      persistentVolumeClaim:
+        claimName: bgupta-pvc
