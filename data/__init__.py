@@ -1,7 +1,12 @@
-from .cub2011parts import CUB2011Parts_dataset
-from .cub2011parts_datamodule import CUB2011Parts
 from .mnist_dataset import explanation_mnist_dataset
 from .mnist_datamodules import ExplanationMNIST
+
+try:
+    from .cub2011parts import CUB2011Parts_dataset
+    from .cub2011parts_datamodule import CUB2011Parts
+except Exception:
+    CUB2011Parts_dataset = None
+    CUB2011Parts = None
 
 __all__ = [
     "explanation_mnist_dataset",
