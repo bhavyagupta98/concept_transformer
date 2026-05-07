@@ -21,6 +21,7 @@ PYTHON=${PYTHON:-python3}
 VENV_DIR=${VENV_DIR:-$BASE_DIR/venv}
 CUDA_VERSION=${CUDA_VERSION:-11.8}  # set to 11.8 or 12.1 or 'auto'
 RUN_DRIVER=${RUN_DRIVER:-1}
+REQ_FILE="$BASE_DIR/requirements.txt"
 
 echo "Using python: $PYTHON"
 
@@ -40,47 +41,53 @@ pip install --upgrade pip setuptools wheel
 
 echo "Installing dependencies from requirements.txt"
 
-# Install torch wheel first if CUDA version is specified and index is available
-if [ "$CUDA_VERSION" = "auto" ] || [ -z "$CUDA_VERSION" ]; then
-  echo "Installing requirements (no specific CUDA wheel)"
-  pip install -r "$BASE_DIR/requirements.txt"
-else
-  case "$CUDA_VERSION" in
-    11.8)
-      TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118"
-      ;;
-    12.1)
-      TORCH_INDEX_URL="https://download.pytorch.org/whl/cu121"
-      ;;
-    *)
-      TORCH_INDEX_URL=""
-      ;;
-  esac
+case "$CUDA_VERSION" in
+  11.8)
+    TORCH_INDEX_URL="https://download.pytorch.org/whl/cu118"
+    ;;
+  12.1)
+    TORCH_INDEX_URL="https://download.pytorch.org/whl/cu121"
+    ;;
+  auto|"")
+    TORCH_INDEX_URL=""
+    ;;
+  *)
+    TORCH_INDEX_URL=""
+    ;;
+esac
 
-  if [ -n "$TORCH_INDEX_URL" ]; then
-    echo "Installing torch==2.2.0 and torchvision==0.17.0 from $TORCH_INDEX_URL"
-    pip install --upgrade pip
-    pip install --index-url "$TORCH_INDEX_URL" torch==2.2.0 torchvision==0.17.0
-    # Install remaining requirements but skip torch/torchvision if present
-    pip install -r "$BASE_DIR/requirements.txt" --ignore-installed --no-deps
-  else
-    pip install -r "$BASE_DIR/requirements.txt"
-  fi
+if [ -n "$TORCH_INDEX_URL" ]; then
+  echo "Installing torch==2.2.0 and torchvision==0.17.0 from $TORCH_INDEX_URL"
+  pip install --upgrade pip
+  pip install --index-url "$TORCH_INDEX_URL" torch==2.2.0 torchvision==0.17.0
+
+  FILTERED_REQS="$(mktemp)"
+  grep -vE '^(torch|torchvision)(==|$)' "$REQ_FILE" > "$FILTERED_REQS"
+  echo "Installing remaining dependencies from filtered requirements"
+  pip install -r "$FILTERED_REQS"
+  rm -f "$FILTERED_REQS"
+else
+  echo "Installing requirements (no specific CUDA wheel)"
+  pip install -r "$REQ_FILE"
 fi
 
 echo "Preparing datasets (CUB example)"
-python - <<'PY'
+BASE_DIR="$BASE_DIR" python - <<'PY'
+import os
 import sys
-sys.path.insert(0, '$BASE_DIR')
+
+base_dir = os.environ["BASE_DIR"]
+sys.path.insert(0, base_dir)
+
 try:
     from data.cub2011parts_datamodule import CUB2011Parts
-    dm = CUB2011Parts(data_dir='$BASE_DIR/data', batch_size=32, num_workers=4)
+
+    dm = CUB2011Parts(data_dir=os.path.join(base_dir, "data"), batch_size=32, num_workers=4)
     dm.prepare_data()
     dm.setup()
-    print('CUB dataset prepared under $BASE_DIR/data')
+    print(f"CUB dataset prepared under {os.path.join(base_dir, 'data')}")
 except Exception as e:
-    print('Warning: CUB prepare_data() failed:', e)
-    pass
+    print("Warning: CUB prepare_data() failed:", e)
 PY
 
 if [ "$RUN_DRIVER" -eq 1 ]; then
