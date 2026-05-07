@@ -48,7 +48,13 @@ spec:
         - name: RUN_DRIVER
           value: "1"
         - name: GIT_REPO
-          value: ""
+          value: "https://github.com/bhavyagupta98/concept_transformer.git"
+        - name: RUN_MNIST
+          value: "1"
+        - name: RUN_CUB
+          value: "0"
+        - name: RUN_SCALING
+          value: "0"
       volumeMounts:
         - name: workspace
           mountPath: /workspace
