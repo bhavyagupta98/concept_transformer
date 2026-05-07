@@ -6,27 +6,6 @@ metadata:
     app: concept-transformer
 spec:
   restartPolicy: Never
-  # Init container clones the repo into the shared workspace if not present.
-  initContainers:
-    - name: clone-repo
-      image: alpine/git:latest
-      command:
-        - sh
-        - -c
-        - |
-          if [ -d /workspace/.git ]; then
-            echo "Repo already present in /workspace"
-          else
-            if [ -n "${GIT_REPO:-}" ]; then
-              git clone "${GIT_REPO}" /workspace || exit 1
-            else
-              echo "No GIT_REPO provided; assuming workspace already populated" && exit 0
-            fi
-          fi
-      volumeMounts:
-        - name: workspace
-          mountPath: /workspace
-
   containers:
     - name: ct-runner
       image: pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
@@ -35,9 +14,16 @@ spec:
         - sh
         - -c
         - |
-          chmod +x /workspace/scripts/setup.sh /workspace/scripts/driver.sh || true
+          set -euo pipefail
+          # Clone repo if needed
+          if [ ! -d /workspace/.git ]; then
+            if [ -n "${GIT_REPO:-}" ]; then
+              echo "Cloning ${GIT_REPO}..."
+              git clone "${GIT_REPO}" /workspace
+            fi
+          fi
           cd /workspace
-          # Run setup (will create venv, install deps, prepare data, and run driver)
+          chmod +x scripts/setup.sh scripts/driver.sh 2>/dev/null || true
           /workspace/scripts/setup.sh
       resources:
         limits:
