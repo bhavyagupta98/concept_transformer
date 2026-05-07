@@ -4,11 +4,11 @@ from argparse import ArgumentParser
 import data
 import pytorch_lightning as pl
 import torch
-from pl_bolts.optimizers.lr_scheduler import LinearWarmupCosineAnnealingLR
+from torch.optim.lr_scheduler import CosineAnnealingWarmRestarts
 from pytorch_lightning.callbacks import ModelCheckpoint, EarlyStopping
 from pytorch_lightning.loggers import TensorBoardLogger
 from torch.nn import functional as F
-from torchmetrics.functional.classification.accuracy import accuracy
+from torchmetrics.functional.classification import accuracy
 
 import ctc
 from ctc import concepts_cost, concepts_sparsity_cost, spatial_concepts_cost
@@ -150,7 +150,7 @@ class CTCModel(pl.LightningModule):
         preds = torch.argmax(logits, dim=1)
 
         ce_loss = F.nll_loss(logits, y)
-        acc = accuracy(preds, y)
+        acc = accuracy(preds, y, task="binary" if y.max() == 1 else "multiclass", num_classes=max(preds.max().item() + 1, 2))
 
         expl_loss = concepts_cost(concept_attn, expl) + spatial_concepts_cost(
             spatial_concept_attn, spatial_expl
@@ -179,9 +179,14 @@ class CTCModel(pl.LightningModule):
         if self.hparams.disable_lr_scheduler:
             return [optimizer]
         else:
-            scheduler = LinearWarmupCosineAnnealingLR(
-                optimizer, warmup_epochs=self.hparams.warmup, max_epochs=self.hparams.max_epochs
-            )
+            # Linear warmup followed by cosine annealing
+            def lr_lambda(current_step: int):
+                if current_step < self.hparams.warmup:
+                    return float(current_step) / float(max(1, self.hparams.warmup))
+                return max(0.0, float(self.hparams.max_epochs - current_step) / float(max(1, self.hparams.max_epochs - self.hparams.warmup)))
+            
+            from torch.optim.lr_scheduler import LambdaLR
+            scheduler = LambdaLR(optimizer, lr_lambda)
         return [optimizer], [scheduler]
 
 
@@ -233,36 +238,36 @@ def get_trainer(max_epochs, logger, callbacks, amp=False, debug=False):
     if debug:
         trainer = pl.Trainer(
             fast_dev_run=True,
-            weights_summary="full",
             log_every_n_steps=1,
             logger=logger,
             max_epochs=max_epochs,
             callbacks=callbacks,
-            progress_bar_refresh_rate=10,
+            enable_progress_bar=True,
         )
     else:
         if torch.cuda.device_count():
             if amp:
-                kwargs = {"amp_backend": "apex", "amp_level": "O2", "precision": 16}
+                kwargs = {"precision": "16-mixed"}
             else:
                 kwargs = {}
 
             trainer = pl.Trainer(
                 logger=logger,
-                gpus=-1,
-                auto_select_gpus=True,
+                accelerator="gpu",
+                devices=-1,
                 max_epochs=max_epochs,
                 callbacks=callbacks,
-                progress_bar_refresh_rate=10,
+                enable_progress_bar=True,
                 gradient_clip_val=1.0,
                 **kwargs,
             )
         else:
             trainer = pl.Trainer(
                 logger=logger,
+                accelerator="cpu",
                 max_epochs=max_epochs,
                 callbacks=callbacks,
-                progress_bar_refresh_rate=10,
+                enable_progress_bar=True,
             )
     return trainer
 

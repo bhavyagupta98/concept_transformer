@@ -1,0 +1,60 @@
+apiVersion: v1
+kind: Pod
+metadata:
+  name: concept-transformer-gpu-runner
+  labels:
+    app: concept-transformer
+spec:
+  restartPolicy: Never
+  # Init container clones the repo into the shared workspace if not present.
+  initContainers:
+    - name: clone-repo
+      image: alpine/git:latest
+      command:
+        - sh
+        - -c
+        - |
+          if [ -d /workspace/.git ]; then
+            echo "Repo already present in /workspace"
+          else
+            if [ -n "${GIT_REPO:-}" ]; then
+              git clone "${GIT_REPO}" /workspace || exit 1
+            else
+              echo "No GIT_REPO provided; assuming workspace already populated" && exit 0
+            fi
+          fi
+      volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+
+  containers:
+    - name: ct-runner
+      image: pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
+      imagePullPolicy: IfNotPresent
+      command:
+        - sh
+        - -c
+        - |
+          chmod +x /workspace/scripts/setup.sh /workspace/scripts/driver.sh || true
+          cd /workspace
+          # Run setup (will create venv, install deps, prepare data, and run driver)
+          /workspace/scripts/setup.sh
+      resources:
+        limits:
+          nvidia.com/gpu: 1
+      env:
+        - name: CUDA_VERSION
+          value: "11.8"
+        - name: RUN_DRIVER
+          value: "1"
+        - name: GIT_REPO
+          value: ""
+      volumeMounts:
+        - name: workspace
+          mountPath: /workspace
+
+  volumes:
+    - name: workspace
+      hostPath:
+        path: /mnt/concept_transformer_workspace
+        type: DirectoryOrCreate
