@@ -57,10 +57,26 @@ class CUB2011Parts(pl.LightningDataModule):
             os.replace(root_attributes, cub_attributes)
 
     def prepare_data(self):
-        # Skip download/extract when the extracted dataset is already present.
+        # Verify that the extracted dataset exists (manual download required).
         data_root = self._resolve_root()
         self._normalize_extracted_layout(data_root)
         cub_root = os.path.join(data_root, 'CUB_200_2011')
+        
+        # Check if dataset folder exists
+        if not os.path.exists(cub_root):
+            raise FileNotFoundError(
+                f"CUB_200_2011 dataset folder not found at {cub_root}\n\n"
+                f"Please download the dataset manually from:\n"
+                f"  http://www.vision.caltech.edu/datasets/cub_200_2011/\n\n"
+                f"Then extract it to:\n"
+                f"  {data_root}/CUB_200_2011/\n\n"
+                f"Extraction command (Linux/macOS):\n"
+                f"  tar -xzf CUB_200_2011.tgz -C {data_root}/\n"
+                f"Or if downloaded as .zip:\n"
+                f"  unzip CUB_200_2011.zip -d {data_root}/ && tar -xzf {data_root}/CUB_200_2011.tgz -C {data_root}/"
+            )
+        
+        # Verify required files exist
         required_files = [
             'images.txt',
             'image_class_labels.txt',
@@ -69,12 +85,14 @@ class CUB2011Parts(pl.LightningDataModule):
             os.path.join('parts', 'part_locs.txt'),
             os.path.join('attributes', 'image_attribute_labels.txt'),
         ]
-
-        if all(os.path.exists(os.path.join(cub_root, rel_path)) for rel_path in required_files):
-            return
-
-        # Download and crop only if the extracted dataset is missing.
-        CUB2011Parts_dataset(download=True, root=self.data_dir)
+        
+        missing_files = [f for f in required_files if not os.path.exists(os.path.join(cub_root, f))]
+        if missing_files:
+            raise FileNotFoundError(
+                f"CUB_200_2011 dataset is incomplete. Missing files:\n  "
+                + "\n  ".join(missing_files) + 
+                f"\n\nPlease verify extraction to {cub_root}/"
+            )
 
     def setup(self, stage=None):
         data_root = self._resolve_root()
