@@ -150,7 +150,10 @@ class CTCModel(pl.LightningModule):
         preds = torch.argmax(logits, dim=1)
 
         ce_loss = F.nll_loss(logits, y)
-        acc = accuracy(preds, y, task="binary" if y.max() == 1 else "multiclass", num_classes=max(preds.max().item() + 1, 2))
+        # Pass logits (not preds) to accuracy; torchmetrics handles argmax internally
+        # Use logits.shape[1] to get actual number of classes (not just max in batch)
+        num_classes_val = logits.shape[1]
+        acc = accuracy(logits, y, task="multiclass", num_classes=num_classes_val)
 
         expl_loss = concepts_cost(concept_attn, expl) + spatial_concepts_cost(
             spatial_concept_attn, spatial_expl
@@ -192,6 +195,9 @@ class CTCModel(pl.LightningModule):
 
 def run_exp(args):
     print("\n* RUN EXPERIMENT {}\n".format(args))
+
+    if torch.cuda.is_available():
+        torch.set_float32_matmul_precision('high')
 
     model = CTCModel(**vars(args))
     data_module = getattr(data, args.data_name)(**vars(args))

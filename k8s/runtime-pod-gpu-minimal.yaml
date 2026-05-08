@@ -5,7 +5,29 @@ metadata:
   labels:
     app: concept-transformer
 spec:
-  restartPolicy: Never
+  restartPolicy: OnFailure
+  tolerations:
+    - key: nautilus.io/reservation
+      operator: Exists
+      effect: NoSchedule
+    - effect: PreferNoSchedule
+      key: nvidia.com/gpu
+      operator: Exists
+    - key: nautilus.io/issue
+      operator: Exists
+      effect: NoSchedule
+  affinity:
+    nodeAffinity:
+      requiredDuringSchedulingIgnoredDuringExecution:
+        nodeSelectorTerms:
+          - matchExpressions:
+              - key: nvidia.com/gpu.product
+                operator: In
+                values:
+                  - NVIDIA-A10
+                  - NVIDIA-RTX-A6000
+                  - NVIDIA-A100-SXM4-80GB
+
   containers:
     - name: ct-runner
       image: pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
@@ -27,18 +49,31 @@ spec:
           # Keep pod running
           tail -f /dev/null
       resources:
+        requests:
+          cpu: "8"
+          memory: "32Gi"
         limits:
+          cpu: "8"
+          memory: "32Gi"
           nvidia.com/gpu: 1
       env:
         - name: CUDA_VERSION
           value: "11.8"
         - name: GIT_REPO
           value: "https://github.com/bhavyagupta98/concept_transformer.git"
+        - name: DATA_ROOT
+          value: "/workspace/data"
       volumeMounts:
         - name: workspace
           mountPath: /workspace
+        - name: dshm
+          mountPath: /dev/shm
 
   volumes:
     - name: workspace
       persistentVolumeClaim:
         claimName: bgupta-pvc
+    - name: dshm
+      emptyDir:
+        medium: Memory
+        sizeLimit: 8Gi

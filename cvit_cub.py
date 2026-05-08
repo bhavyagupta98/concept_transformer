@@ -48,4 +48,9 @@ torch.manual_seed(args.seed)
 np.random.seed(args.seed)
 
 model, trainer, data_module = run_exp(args)
-test_results = trainer.test(datamodule=data_module, ckpt_path="best")
+
+# Skip testing in debug/fast_dev_run mode since no checkpoint is saved
+if not args.debug:
+    test_results = trainer.test(datamodule=data_module, ckpt_path="best")
+else:
+    print("Skipping test in debug mode (fast_dev_run=True)")

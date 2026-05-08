@@ -81,10 +81,11 @@ class CVIT(nn.Module):
         cls_token = self.feature_extractor.cls_token.expand(
             x.shape[0], -1, -1
         )  # stole cls_tokens impl from Phil Wang, thanks
-        if self.feature_extractor.dist_token is None:
+        dist_token = getattr(self.feature_extractor, "dist_token", None)
+        if dist_token is None:
             x = torch.cat((cls_token, x), dim=1)
         else:
-            x = torch.cat((cls_token, self.feature_extractor.dist_token.expand(x.shape[0], -1, -1), x), dim=1)
+            x = torch.cat((cls_token, dist_token.expand(x.shape[0], -1, -1), x), dim=1)
         x = self.feature_extractor.pos_drop(x + self.feature_extractor.pos_embed)
         x = self.feature_extractor.blocks(x)
         x = self.feature_extractor.norm(x)

@@ -22,6 +22,38 @@ VENV_DIR=${VENV_DIR:-$BASE_DIR/venv}
 CUDA_VERSION=${CUDA_VERSION:-11.8}  # set to 11.8 or 12.1 or 'auto'
 RUN_DRIVER=${RUN_DRIVER:-1}
 REQ_FILE="$BASE_DIR/requirements.txt"
+# Allow overriding where datasets are stored. Default is repo-local `data/`.
+DATA_ROOT=${DATA_ROOT:-"$BASE_DIR/data"}
+
+# Parse simple CLI args: --data-root|-d to override DATA_ROOT, --no-driver to skip running driver
+while [[ $# -gt 0 ]]; do
+  case "$1" in
+    --data-root|-d)
+      if [[ -n "$2" ]]; then
+        DATA_ROOT="$2"
+        shift 2
+      else
+        echo "Error: --data-root requires a path argument" >&2
+        exit 1
+      fi
+      ;;
+    --no-driver)
+      RUN_DRIVER=0
+      shift
+      ;;
+    --help|-h)
+      echo "Usage: $0 [--data-root PATH] [--no-driver]"
+      echo "  --data-root, -d   Directory to prepare/download datasets into (overrides DATA_ROOT env)"
+      echo "  --no-driver       Skip running the driver after setup"
+      exit 0
+      ;;
+    *)
+      echo "Unknown argument: $1" >&2
+      echo "Usage: $0 [--data-root PATH] [--no-driver]"
+      exit 1
+      ;;
+  esac
+done
 
 echo "Using python: $PYTHON"
 
@@ -71,23 +103,23 @@ else
   pip install -r "$REQ_FILE"
 fi
 
-echo "Preparing datasets (CUB example)"
-BASE_DIR="$BASE_DIR" python - <<'PY'
+echo "Preparing datasets (CUB example) at $DATA_ROOT"
+BASE_DIR="$BASE_DIR" DATA_ROOT="$DATA_ROOT" python - <<'PY'
 import os
 import sys
-
 base_dir = os.environ["BASE_DIR"]
+data_root = os.environ.get("DATA_ROOT", os.path.join(base_dir, "data"))
 sys.path.insert(0, base_dir)
 
 try:
-    from data.cub2011parts_datamodule import CUB2011Parts
+  from data.cub2011parts_datamodule import CUB2011Parts
 
-    dm = CUB2011Parts(data_dir=os.path.join(base_dir, "data"), batch_size=32, num_workers=4)
-    dm.prepare_data()
-    dm.setup()
-    print(f"CUB dataset prepared under {os.path.join(base_dir, 'data')}")
+  dm = CUB2011Parts(data_dir=data_root, batch_size=32, num_workers=4)
+  dm.prepare_data()
+  dm.setup()
+  print(f"CUB dataset prepared under {data_root}")
 except Exception as e:
-    print("Warning: CUB prepare_data() failed:", e)
+  print("Warning: CUB prepare_data() failed:", e)
 PY
 
 if [ "$RUN_DRIVER" -eq 1 ]; then

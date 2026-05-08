@@ -1,4 +1,5 @@
 import albumentations as A
+import os
 import pytorch_lightning as pl
 from albumentations import HorizontalFlip, Normalize
 from albumentations.augmentations.geometric.resize import Resize
@@ -31,13 +32,55 @@ class CUB2011Parts(pl.LightningDataModule):
                                          ToTensorV2()],
                                         keypoint_params = A.KeypointParams(format='xy', remove_invisible=False))
 
+    def _resolve_root(self):
+        data_root = os.path.expanduser(self.data_dir)
+
+        # Support both:
+        # - data_dir = /workspace/data            -> expects /workspace/data/CUB_200_2011
+        # - data_dir = /workspace/data/CUB_200_2011 -> treat parent as the dataset root
+        if os.path.basename(data_root) == 'CUB_200_2011':
+            parent_root = os.path.dirname(data_root)
+            if os.path.exists(os.path.join(parent_root, 'CUB_200_2011')):
+                return parent_root
+
+        return data_root
+
+    def _normalize_extracted_layout(self, data_root):
+        cub_root = os.path.join(data_root, 'CUB_200_2011')
+        root_attributes = os.path.join(data_root, 'attributes.txt')
+        cub_attributes = os.path.join(cub_root, 'attributes.txt')
+
+        # When the archive is manually extracted, attributes.txt can end up in the
+        # dataset root instead of inside CUB_200_2011/. Move it into the expected place.
+        if os.path.exists(root_attributes) and not os.path.exists(cub_attributes):
+            os.makedirs(cub_root, exist_ok=True)
+            os.replace(root_attributes, cub_attributes)
+
     def prepare_data(self):
-        # Download and crop
+        # Skip download/extract when the extracted dataset is already present.
+        data_root = self._resolve_root()
+        self._normalize_extracted_layout(data_root)
+        cub_root = os.path.join(data_root, 'CUB_200_2011')
+        required_files = [
+            'images.txt',
+            'image_class_labels.txt',
+            'train_test_split.txt',
+            'bounding_boxes.txt',
+            os.path.join('parts', 'part_locs.txt'),
+            os.path.join('attributes', 'image_attribute_labels.txt'),
+        ]
+
+        if all(os.path.exists(os.path.join(cub_root, rel_path)) for rel_path in required_files):
+            return
+
+        # Download and crop only if the extracted dataset is missing.
         CUB2011Parts_dataset(download=True, root=self.data_dir)
 
     def setup(self, stage=None):
-        trainset = CUB2011Parts_dataset(train=True, root=self.data_dir, transform=self.train_transform)
-        testset = CUB2011Parts_dataset(train=False, root=self.data_dir, transform=self.test_transform)
+        data_root = self._resolve_root()
+        self._normalize_extracted_layout(data_root)
+        trainset = CUB2011Parts_dataset(train=True, root=data_root, transform=self.train_transform)
+        testset = CUB2011Parts_dataset(train=False, root=data_root, transform=self.test_transform)
 
         self.num_classes = trainset.num_classes
 

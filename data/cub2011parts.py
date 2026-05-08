@@ -28,8 +28,8 @@ class CUB2011Parts_dataset(VisionDataset):
     """
     url = 'https://data.deepai.org/CUB200(2011).zip'
     filename = 'CUB_200_2011.tgz'
-    base_folder = 'CUB_200_2011/images'
-    cropped_folder = 'CUB_200_2011/cropped'
+    base_folder = 'images'
+    cropped_folder = 'cropped'
 
     # Grid dimensions for patches
     grid = (14, 14)
@@ -65,6 +65,7 @@ class CUB2011Parts_dataset(VisionDataset):
         self.loader = default_loader
         self.train = train
         self.crop = crop
+        self.dataset_root = self._resolve_dataset_root()
 
         if download:
             self._download()
@@ -72,43 +73,59 @@ class CUB2011Parts_dataset(VisionDataset):
         if not self._check_integrity():
             raise RuntimeError('Dataset not found or corrupted. You can use download=True to download it')
 
+        # Load metadata before any cropping or splitting so self.data exists.
+        self._load_metadata()
+
         # Process images by cropping them
         if self.crop:
-            if not os.path.exists(os.path.join(self.root, self.cropped_folder)):
-                os.mkdir(os.path.join(self.root, self.cropped_folder))
+            if not os.path.exists(os.path.join(self.dataset_root, self.cropped_folder)):
+                os.mkdir(os.path.join(self.dataset_root, self.cropped_folder))
                 self._crop_images()
             self.sample_folder = self.cropped_folder
         else:
             self.sample_folder = self.base_folder
 
-        # Splitting training and test data
+        # Split training and test data after the crop folder is prepared.
         self._split_train_test()
+
+    def _resolve_dataset_root(self):
+        root = os.path.expanduser(self.root)
+        nested_root = os.path.join(root, 'CUB_200_2011')
+
+        # Prefer the directory that actually contains the metadata files.
+        if os.path.exists(os.path.join(root, 'images.txt')):
+            return root
+        if os.path.exists(os.path.join(nested_root, 'images.txt')):
+            return nested_root
+
+        # Fallback to the nested path so the integrity check can report a clear failure.
+        return nested_root
 
     def _load_metadata(self):
         # Load images paths
-        images = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'images.txt'), sep=' ',
+        images = pd.read_csv(os.path.join(self.dataset_root, 'images.txt'), sep=r'\s+',
                              names=['img_id', 'filepath'])
-        image_class_labels = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'image_class_labels.txt'),
-                                         sep=' ', names=['img_id', 'target'])
-        train_test_split = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'train_test_split.txt'),
-                                       sep=' ', names=['img_id', 'is_training_img'])
+        image_class_labels = pd.read_csv(os.path.join(self.dataset_root, 'image_class_labels.txt'),
+                         sep=r'\s+', names=['img_id', 'target'])
+        train_test_split = pd.read_csv(os.path.join(self.dataset_root, 'train_test_split.txt'),
+                           sep=r'\s+', names=['img_id', 'is_training_img'])
         data = images.merge(image_class_labels, on='img_id')
 
         # Load bounding boxes
-        bbox = self._load_bounding_boxes(self.root)
+        bbox = self._load_bounding_boxes(self.dataset_root)
         data = data.merge(bbox, on='img_id')
 
         # Load parts
-        self.parts = self._load_parts(self.root)
+        self.parts = self._load_parts(self.dataset_root)
 
         # Load class names
-        class_names = pd.read_csv(os.path.join(self.root, 'CUB_200_2011', 'classes.txt'),
+        class_names = pd.read_csv(os.path.join(self.dataset_root, 'classes.txt'),
                                   sep=' ', names=['class_name'], usecols=[1])
         self.class_names = class_names['class_name'].to_list()
 
         self.num_classes = len(self.class_names)
 
-        attr_list, attributes, attr_id2parts = self._load_attributes(self.root)
+        attr_list, attributes, attr_id2parts = self._load_attributes(self.dataset_root)
 
         # Match attribute ids and part ids
         attr_ids_part_ids = []
@@ -156,7 +173,7 @@ class CUB2011Parts_dataset(VisionDataset):
 
     @staticmethod
     def _load_bounding_boxes(root):
-        bbox = pd.read_csv(os.path.join(root, 'CUB_200_2011', 'bounding_boxes.txt'), sep=' ',
+        bbox = pd.read_csv(os.path.join(root, 'bounding_boxes.txt'), sep=r'\s+',
                            names=['img_id', 'x1', 'y1', 'w', 'h'])
         bbox.img_id = bbox.img_id.astype(int)
         bbox["x2"] = bbox.x1 + bbox.w
@@ -165,8 +182,8 @@ class CUB2011Parts_dataset(VisionDataset):
 
     @staticmethod
     def _load_parts(root):
-        parts = pd.read_csv(os.path.join(root, 'CUB_200_2011', 'parts', 'part_locs.txt'),
-                            sep=' ', names=['img_id', 'part_id', 'x', 'y', 'visible'])
+        parts = pd.read_csv(os.path.join(root, 'parts', 'part_locs.txt'),
+                    sep=r'\s+', names=['img_id', 'part_id', 'x', 'y', 'visible'])
         parts.img_id = parts.img_id.astype(int)
         parts.part_id = parts.part_id.astype(int)
         parts.visible = parts.visible.astype(bool)
@@ -175,8 +192,8 @@ class CUB2011Parts_dataset(VisionDataset):
     @staticmethod
     def _load_attributes(root):
         # Load list of attributes
-        attr_list = pd.read_csv(os.path.join(root, 'CUB_200_2011', 'attributes.txt'),
-                                sep=' ', names=['attr_id', 'def'])
+        attr_list = pd.read_csv(os.path.join(root, 'attributes.txt'),
+                    sep=r'\s+', names=['attr_id', 'def'])
 
         # Find parts corresponding to each attribute
         has2part = {
@@ -208,8 +225,13 @@ class CUB2011Parts_dataset(VisionDataset):
                 attr_id2parts[k] += part
 
         # Load attributes of each image
-        attributes = pd.read_csv(os.path.join(root, 'CUB_200_2011', 'attributes', 'image_attribute_labels.txt'),
-                                 sep=' ', names=['img_id', 'attr_id', 'is_present', 'certainty', 'time'])
+        attributes = pd.read_csv(
+            os.path.join(root, 'attributes', 'image_attribute_labels.txt'),
+            sep=r'\s+',
+            names=['img_id', 'attr_id', 'is_present', 'certainty', 'time'],
+            engine='python',
+            on_bad_lines='skip',
+        )
         attributes.img_id = attributes.img_id.astype(int)
         attributes.attr_id = attributes.attr_id.astype(int)
         attributes.is_present = attributes.is_present.astype(int)
@@ -252,16 +274,24 @@ class CUB2011Parts_dataset(VisionDataset):
         return expl, spatial_expl
 
     def _check_integrity(self):
-        try:
-            self._load_metadata()
-        except Exception:
+        required_files = [
+            os.path.join(self.dataset_root, 'images.txt'),
+            os.path.join(self.dataset_root, 'image_class_labels.txt'),
+            os.path.join(self.dataset_root, 'train_test_split.txt'),
+            os.path.join(self.dataset_root, 'bounding_boxes.txt'),
+            os.path.join(self.dataset_root, 'classes.txt'),
+            os.path.join(self.dataset_root, 'attributes.txt'),
+            os.path.join(self.dataset_root, 'parts', 'part_locs.txt'),
+            os.path.join(self.dataset_root, 'attributes', 'image_attribute_labels.txt'),
+        ]
+
+        if not all(os.path.isfile(path) for path in required_files):
             return False
 
-        for index, row in self.data.iterrows():
-            filepath = os.path.join(self.root, self.base_folder, row.filepath)
-            if not os.path.isfile(filepath):
-                print(filepath)
-                return False
+        images_dir = os.path.join(self.dataset_root, self.base_folder)
+        if not os.path.isdir(images_dir):
+            return False
+
         return True
 
     def _download(self):
@@ -273,25 +303,26 @@ class CUB2011Parts_dataset(VisionDataset):
             return
 
         print('Downloading dataset')
-        download_and_extract_archive(self.url, self.root)
-        root = os.path.expanduser(self.root)
-        extract_archive(os.path.join(root, self.filename), root, True)
+        download_root = os.path.expanduser(self.root)
+        download_and_extract_archive(self.url, download_root)
+        extract_archive(os.path.join(download_root, self.filename), download_root, True)
 
         # Move `attributes.txt` to basefolder instead of root
-        if os.path.exists(os.path.join(self.root, 'attributes.txt')):
-            os.rename(os.path.join(self.root, 'attributes.txt'),
-                      os.path.join(self.root, 'CUB_200_2011', 'attributes.txt'))
+        if os.path.exists(os.path.join(download_root, 'attributes.txt')):
+            os.makedirs(self.dataset_root, exist_ok=True)
+            os.replace(os.path.join(download_root, 'attributes.txt'),
+                       os.path.join(self.dataset_root, 'attributes.txt'))
 
     def _crop_images(self):
         """Process images by cropping them and saving them in `cropped_folder`
         """
         for img_id, sample in tqdm(self.data.iterrows(), total=len(self.data),
                                    desc="Cropping and saving images..."):
-            path = os.path.join(self.root, self.base_folder, sample.filepath)
+            path = os.path.join(self.dataset_root, self.base_folder, sample.filepath)
             img = self.loader(path)
 
             proc_img = img.crop(sample[['x1', 'y1', 'x2', 'y2']])
-            proc_filename = os.path.join(self.root, self.cropped_folder, sample.filepath)
+            proc_filename = os.path.join(self.dataset_root, self.cropped_folder, sample.filepath)
             if not os.path.exists(os.path.dirname(proc_filename)):
                 os.mkdir(os.path.dirname(proc_filename))
             proc_img.save(proc_filename)
@@ -308,7 +339,11 @@ class CUB2011Parts_dataset(VisionDataset):
         """
         sample_metadata = self.data.iloc[idx]
         image_id = self.data.iloc[idx]['img_id']
-        path = os.path.join(self.root, self.sample_folder, sample_metadata.filepath)
+        path = os.path.join(self.dataset_root, self.sample_folder, sample_metadata.filepath)
+        if not os.path.isfile(path):
+            fallback_path = os.path.join(self.dataset_root, self.base_folder, sample_metadata.filepath)
+            if os.path.isfile(fallback_path):
+                path = fallback_path
         target = sample_metadata.target - 1  # Targets start at 1 by default, so shift to 0
 
         # get all parts with coordinates for current image
