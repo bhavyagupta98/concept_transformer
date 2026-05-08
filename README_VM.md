@@ -40,10 +40,11 @@ cd /workspace/data
 If you only need MNIST (quick smoke test):
 ```bash
 . venv/bin/activate  # Ensure venv is active
-bash /path/to/concept_transformer/scripts/setup.sh --data-root /workspace/data
+cd concept_transformer
+sh scripts/setup.sh
 ```
 
-This automatically downloads MNIST to `/workspace/data/mnist/`.
+This automatically downloads MNIST to `/root/data/mnist/`.
 
 **Option B: Download & extract CUB dataset using curl**
 
@@ -52,8 +53,8 @@ For CUB dataset, download and extract manually:
 1. Install dependencies (if not already installed):
 ```bash
 # Linux (Ubuntu/Debian)
-sudo apt-get update
-sudo apt-get install -y curl unzip
+apt-get update
+apt-get install -y curl unzip
 
 # macOS
 brew install curl unzip  # Usually pre-installed
@@ -62,35 +63,20 @@ brew install curl unzip  # Usually pre-installed
 2. Download the CUB-200-2011 dataset and extract:
 ```bash
 cd /workspace/data
-
-# Download (note: the URL provides a .zip file)
-curl -L -o CUB_200_2011.zip "http://www.vision.caltech.edu/datasets/cub_200_2011/CUB_200_2011.tgz"
-# OR if the above downloads a .zip:
-# curl -L -o CUB_200_2011.zip "<download-url>"
-# unzip CUB_200_2011.zip          # Unzip creates a .tgz file
-# tar -xzf CUB_200_2011.tgz       # Extract the .tgz
-
 # If download is already a .tgz file:
-curl -L -o CUB_200_2011.tgz "http://www.vision.caltech.edu/datasets/cub_200_2011/CUB_200_2011.tgz"
+curl -L -o CUB_200_2011.tgz \
+  "https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz"
 tar -xzf CUB_200_2011.tgz
+
+curl -L -o segmentations.tgz \
+  "https://data.caltech.edu/records/w9d68-gec53/files/segmentations.tgz"
+
+tar -xzf segmentations.tgz
 
 # You should now have: /workspace/data/CUB_200_2011/
 ls /workspace/data/CUB_200_2011/  # Should see: images/, attributes/, parts/, *.txt files
 ```
 
-**Generalized extraction commands** (handle .zip → .tgz → extracted folder):
-```bash
-cd /workspace/data
-
-# If you downloaded a .zip file that contains a .tgz:
-unzip -q CUB_200_2011.zip        # Quiet mode, extracts to create .tgz
-tar -xzf CUB_200_2011.tgz        # Extract the .tgz
-rm -f CUB_200_2011.zip CUB_200_2011.tgz  # Clean up archives
-
-# If you have a direct .tgz:
-tar -xzf CUB_200_2011.tgz
-rm -f CUB_200_2011.tgz
-```
 
 Verify extraction:
 ```bash
@@ -110,7 +96,7 @@ cd /path/to/concept_transformer
 
 ```bash
 . venv/bin/activate
-python3 ctc_mnist.py --data_dir /workspace/data --max_epochs 1 --batch_size 32
+python3 ctc_mnist.py
 ```
 
 **CUB Training**:
@@ -126,18 +112,6 @@ python3 cvit_cub.py --data_dir /workspace/data --max_epochs 1 --batch_size 8
 - `--num_workers`: Number of DataLoader workers (default: 8; reduce if you hit memory issues)
 - `--data_dir`: Path to the dataset root (parent of `CUB_200_2011/` or `mnist/` folder) — use `/workspace/data`
 - For more options: `python3 ctc_mnist.py --help` or `python3 cvit_cub.py --help`
-
-**Updating code & syncing to a running k8s pod**:
-- If the process runs on the same VM, use `git pull` / `git fetch` + `git reset --hard origin/main`.
-- If you need to update a k8s pod that does not have `git`, copy the repo from your VM:
-
-```bash
-# from VM (repo root)
-# create a tar excluding large venvs
-tar --exclude='./venv' --exclude='./venv_upgraded' -czf /tmp/ctc_changes.tar.gz .
-# copy into pod (example pod name and namespace)
-kubectl cp /tmp/ctc_changes.tar.gz seelab/concept-transformer-gpu-runner:/workspace/ -c ct-runner
-kubectl exec -it concept-transformer-gpu-runner -n seelab -- bash -lc "cd /workspace && tar -xzf ctc_changes.tar.gz && rm ctc_changes.tar.gz"
 ```
 
 **Troubleshooting / Notes**:

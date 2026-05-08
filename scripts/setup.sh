@@ -103,24 +103,6 @@ else
   pip install -r "$REQ_FILE"
 fi
 
-echo "Preparing datasets (CUB example) at $DATA_ROOT"
-BASE_DIR="$BASE_DIR" DATA_ROOT="$DATA_ROOT" python - <<'PY'
-import os
-import sys
-base_dir = os.environ["BASE_DIR"]
-data_root = os.environ.get("DATA_ROOT", os.path.join(base_dir, "data"))
-sys.path.insert(0, base_dir)
-
-try:
-  from data.cub2011parts_datamodule import CUB2011Parts
-
-  dm = CUB2011Parts(data_dir=data_root, batch_size=32, num_workers=4)
-  dm.prepare_data()
-  dm.setup()
-  print(f"CUB dataset prepared under {data_root}")
-except Exception as e:
-  print("Warning: CUB prepare_data() failed:", e)
-PY
 
 if [ "$RUN_DRIVER" -eq 1 ]; then
   echo "Running driver script"

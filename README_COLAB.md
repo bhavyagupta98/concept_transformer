@@ -43,10 +43,9 @@ os.makedirs(data_root, exist_ok=True)
 
 ```python
 %cd /content/concept_transformer
-!bash scripts/setup.sh --data-root /content/drive/MyDrive/workspace/data
+!bash scripts/setup.sh
 ```
 
-This downloads MNIST to `/content/drive/MyDrive/workspace/data/mnist/`.
 
 **Option B: Download & extract CUB dataset using curl**
 
@@ -63,36 +62,15 @@ os.chdir(data_root)
 
 # Download CUB dataset (handling both .zip and .tgz)
 print("Downloading CUB-200-2011...")
-subprocess.run(['curl', '-L', '-o', 'CUB_200_2011.zip', 
-                'http://www.vision.caltech.edu/datasets/cub_200_2011/CUB_200_2011.tgz'], check=True)
+!curl -L -o CUB_200_2011.tgz \
+  "https://data.caltech.edu/records/65de6-vp158/files/CUB_200_2011.tgz"
 
-# Check if downloaded file is .tgz or .zip
-import tarfile
-import zipfile
+!tar -xzf CUB_200_2011.tgz
 
-cub_file = 'CUB_200_2011.zip'  # Renamed from .tgz for consistency
-if zipfile.is_zipfile(cub_file):
-    print("Extracting .zip file...")
-    with zipfile.ZipFile(cub_file, 'r') as zip_ref:
-        zip_ref.extractall(data_root)
-    
-    # If .zip contained a .tgz, extract that too
-    tgz_files = subprocess.run(['find', data_root, '-name', '*.tgz'], 
-                                capture_output=True, text=True)
-    for tgz in tgz_files.stdout.strip().split('\n'):
-        if tgz:
-            print(f"Extracting {tgz}...")
-            with tarfile.open(tgz, 'r:gz') as tar:
-                tar.extractall(data_root)
-            os.remove(tgz)
-elif tarfile.is_tarfile(cub_file):
-    print("Extracting .tar.gz file...")
-    with tarfile.open(cub_file, 'r:gz') as tar:
-        tar.extractall(data_root)
+!curl -L -o segmentations.tgz \
+  "https://data.caltech.edu/records/w9d68-gec53/files/segmentations.tgz"
 
-# Clean up archive
-os.remove(cub_file)
-
+!tar -xzf segmentations.tgz
 # Verify extraction
 print("Verifying extraction...")
 result = subprocess.run(['ls', '-la', f'{data_root}/CUB_200_2011/'], 
@@ -102,43 +80,11 @@ print(result.stdout)
 
 Alternatively, if you have the file locally, upload it to Drive and then extract:
 
-```python
-import os
-import zipfile
-import tarfile
-
-data_root = '/content/drive/MyDrive/workspace/data'
-
-# If you uploaded CUB_200_2011.zip to Drive, extract it
-cub_zip = f'{data_root}/CUB_200_2011.zip'
-if os.path.exists(cub_zip):
-    print("Extracting uploaded .zip...")
-    with zipfile.ZipFile(cub_zip, 'r') as zip_ref:
-        zip_ref.extractall(data_root)
-    
-    # Handle nested .tgz if present
-    tgz_files = [f for f in os.listdir(data_root) if f.endswith('.tgz')]
-    for tgz in tgz_files:
-        print(f"Extracting {tgz}...")
-        with tarfile.open(os.path.join(data_root, tgz), 'r:gz') as tar:
-            tar.extractall(data_root)
-        os.remove(os.path.join(data_root, tgz))
-    
-    os.remove(cub_zip)
-
-# Verify extraction
-os.system(f'ls -la {data_root}/CUB_200_2011/')
-```
-
-You should see: `images/`, `attributes/`, `parts/`, and `.txt` metadata files.
-
-## Step 4: Run Experiments
-
 **MNIST Training (quick smoke test)**:
 
 ```python
 %cd /content/concept_transformer
-!python3 ctc_mnist.py --data_dir /content/drive/MyDrive/workspace/data --max_epochs 1 --batch_size 32
+!python3 ctc_mnist.py
 ```
 
 **CUB Training**:
