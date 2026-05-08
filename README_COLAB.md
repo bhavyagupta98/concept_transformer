@@ -107,3 +107,4 @@ Alternatively, if you have the file locally, upload it to Drive and then extract
 - If you prefer local training (VM), see `README_VM.md` for detailed VM setup and dataset extraction instructions.
 - If DataLoader worker crashes, reduce `--num_workers` (try 0 or 2).
 - Large file uploads to Drive may be slow; consider using `curl` directly in Colab cells instead (see Option B above).
+
