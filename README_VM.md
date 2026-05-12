@@ -103,7 +103,7 @@ python3 ctc_mnist.py
 
 ```bash
 . venv/bin/activate
-python3 cvit_cub.py --data_dir /workspace/data --max_epochs 1 --batch_size 8
+python3 cvit_cub.py --data_dir /workspace/data --max_epochs 50 --batch_size 8
 ```
 
 **General experiment arguments**:
@@ -121,3 +121,16 @@ python3 cvit_cub.py --data_dir /workspace/data --max_epochs 1 --batch_size 8
 - Check checkpoints and outputs in the repo subfolders (e.g., `mnist_ctc/`, `cub_cvit/`).
 - If DataLoader worker crashes with "Bus error" or shared memory issues, reduce `--num_workers` (try 0 or 2).
 - If `curl` fails to download, verify the dataset URL is correct and you have internet access.
+
+
+```
+cd /workspace/concept_transformer
+source venv/bin/activate
+python run_topk_phase1_mnist.py --run_path mnist_ctc/ExplanationMNIST_expl5.0/binary_mnist_best_ckpt.ckpt --k_values 1,3,5
+```
+
+```
+cd /workspace/concept_transformer
+source venv/bin/activate
+python run_topk_phase1_cub.py --run_path ./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt --k_values 1,3,5 --data_dir /workspace/data/ --batch_size 16
+```
