@@ -1,0 +1,95 @@
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: kg-coop-ct
+  labels:
+    app: kg-coop-ct
+spec:
+  backoffLimit: 0
+  template:
+    metadata:
+      labels:
+        app: kg-coop-ct
+    spec:
+      restartPolicy: Never
+      tolerations:
+        - key: nautilus.io/reservation
+          operator: Exists
+          effect: NoSchedule
+        - effect: PreferNoSchedule
+          key: nvidia.com/gpu
+          operator: Exists
+        - key: nautilus.io/issue
+          operator: Exists
+          effect: NoSchedule
+      affinity:
+        nodeAffinity:
+          requiredDuringSchedulingIgnoredDuringExecution:
+            nodeSelectorTerms:
+              - matchExpressions:
+                  - key: nvidia.com/gpu.product
+                    operator: In
+                    values:
+                      - NVIDIA-A10
+                      - NVIDIA-RTX-A6000
+                      - NVIDIA-A100-SXM4-80GB
+      containers:
+        - name: ct-runner
+          image: pytorch/pytorch:2.2.0-cuda11.8-cudnn8-runtime
+          imagePullPolicy: IfNotPresent
+          command:
+            - bash
+            - -c
+            - |
+              set -e
+              apt-get update && apt-get install -y git
+              if [ ! -d /workspace/concept_transformer ]; then
+                if [ -n "${GIT_REPO:-}" ]; then
+                  echo "Cloning ${GIT_REPO} to /workspace/concept_transformer..."
+                  cd /workspace && git clone "${GIT_REPO}" concept_transformer
+                fi
+              fi
+              cd /workspace/concept_transformer
+              echo "Repository ready at /workspace/concept_transformer"
+              if [ ! -d venv ]; then
+                echo "venv not found at /workspace/concept_transformer/venv"
+                echo "Run scripts/setup.sh once to create it on the PVC, then rerun this Job."
+                exit 1
+              fi
+              . venv/bin/activate
+              echo "Running scaling experiments..."
+              PYTHONPATH=/workspace/concept_transformer python run_mnist_scaling_experiments.py
+              echo "Plotting Figure 2..."
+              PYTHONPATH=/workspace/concept_transformer python scripts/generate_figures.py \
+                --skip_examples \
+                --scaling_json experiments/binary_mnist_scaling_ES.json \
+                --output_dir /workspace/data/figs
+              echo "Job complete"
+          resources:
+            requests:
+              cpu: "8"
+              memory: "32Gi"
+            limits:
+              cpu: "8"
+              memory: "32Gi"
+              nvidia.com/gpu: 1
+          env:
+            - name: CUDA_VERSION
+              value: "11.8"
+            - name: GIT_REPO
+              value: "https://github.com/bhavyagupta98/concept_transformer.git"
+            - name: DATA_ROOT
+              value: "/workspace/data"
+          volumeMounts:
+            - name: workspace
+              mountPath: /workspace
+            - name: dshm
+              mountPath: /dev/shm
+      volumes:
+        - name: workspace
+          persistentVolumeClaim:
+            claimName: bgupta-pvc
+        - name: dshm
+          emptyDir:
+            medium: Memory
+            sizeLimit: 8Gi
