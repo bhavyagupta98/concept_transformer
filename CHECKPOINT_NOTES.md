@@ -4,17 +4,18 @@ This note captures the latest setup state, commands, and outputs used to generat
 
 ## What we are doing
 
-- Run the MNIST scaling experiments (varying N training samples) to generate an `epyc` JSON.
-- Plot Figure 2 from the paper:
-  - Test accuracy vs N training samples.
-  - Val explanation loss vs N training samples.
+- Rebuild scaling JSON from existing checkpoints (no retraining).
+- Plot Figure 2 from the paper as a single two-panel figure:
+  - Left: test accuracy vs N training samples.
+  - Right: val explanation loss vs N training samples (or test proxy if val is missing).
+- Include two curves for $\lambda_{expl}=0.0$ and $\lambda_{expl}=2.0$.
 - Save PNG outputs into the PVC-mounted `/workspace/data/figs` directory.
 
 ## Key files
 
 - `k8s/runtime-job-gpu-minimal.yaml`
   - Job name: `kg-coop-ct`
-  - Runs scaling experiments + plotting
+  - Rebuilds scaling JSON from checkpoints + plotting
   - Writes output to PVC at `/workspace/data/figs`
 - `scripts/generate_figures.py`
   - Adds Figure 2 plotting from `experiments/binary_mnist_scaling_ES.json`
@@ -28,25 +29,27 @@ Activate venv:
 . venv/bin/activate
 ```
 
-Run scaling experiments (generates JSON):
+Rebuild scaling JSON from checkpoints:
 
 ```bash
-PYTHONPATH=/workspace/concept_transformer python run_mnist_scaling_experiments.py
+PYTHONPATH=/workspace/concept_transformer python scripts/rebuild_scaling_json.py \
+  --runs_root /workspace/concept_transformer/binary_mnist_scaling_ES \
+  --output_json /workspace/concept_transformer/experiments/binary_mnist_scaling_ES.json
 ```
 
-Plot Figure 2 from JSON:
+Plot Figure 2 from JSON (two panels, two lambdas):
 
 ```bash
 PYTHONPATH=/workspace/concept_transformer python scripts/generate_figures.py \
   --skip_examples \
-  --scaling_json experiments/binary_mnist_scaling_ES.json \
-  --output_dir /workspace/data/figs
+  --scaling_json /workspace/concept_transformer/experiments/binary_mnist_scaling_ES.json \
+  --output_dir /workspace/data/figs \
+  --scaling_lambdas 0.0,2.0
 ```
 
 Expected PNG outputs:
 
-- `/workspace/data/figs/figure2_test_acc_vs_n.png`
-- `/workspace/data/figs/figure2_val_expl_loss_vs_n.png`
+- `/workspace/data/figs/figure2.png`
 
 ## Kubernetes Job
 

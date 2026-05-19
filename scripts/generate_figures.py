@@ -99,7 +99,7 @@ def _collect_records(obj, out):
             _collect_records(v, out)
 
 
-def plot_scaling_from_json(json_path, output_dir, prefix='figure2'):
+def plot_scaling_from_json(json_path, output_dir, prefix='figure2', expl_lambdas=None):
     if not os.path.isfile(json_path):
         logging.warning('Scaling JSON not found: %s', json_path)
         return
@@ -116,6 +116,7 @@ def plot_scaling_from_json(json_path, output_dir, prefix='figure2'):
         n = rec.get('n_train_samples')
         if n is None:
             continue
+        expl_lambda = rec.get('expl_lambda')
         test_acc = rec.get('test_acc') or rec.get('test_accuracy')
         val_expl = rec.get('val_expl_loss')
         test_expl = rec.get('test_expl_loss')
@@ -124,7 +125,14 @@ def plot_scaling_from_json(json_path, output_dir, prefix='figure2'):
             used_test_expl = True
         if test_acc is None and val_expl is None:
             continue
-        points.append({'n': int(n), 'test_acc': test_acc, 'val_expl_loss': val_expl})
+        points.append(
+            {
+                'n': int(n),
+                'expl_lambda': expl_lambda,
+                'test_acc': test_acc,
+                'val_expl_loss': val_expl,
+            }
+        )
 
     if not points:
         logging.warning('No scaling records with n_train_samples found in %s', json_path)
@@ -133,16 +141,19 @@ def plot_scaling_from_json(json_path, output_dir, prefix='figure2'):
     if used_test_expl:
         logging.warning('val_expl_loss not found; using test_expl_loss as a proxy')
 
-    # Aggregate by n_train_samples
-    by_n = {}
+    # Aggregate by expl_lambda then n_train_samples
+    by_lambda = {}
     for p in points:
-        by_n.setdefault(p['n'], {'test_acc': [], 'val_expl_loss': []})
+        lam = p.get('expl_lambda')
+        by_lambda.setdefault(lam, {})
+        by_lambda[lam].setdefault(p['n'], {'test_acc': [], 'val_expl_loss': []})
         if p['test_acc'] is not None:
-            by_n[p['n']]['test_acc'].append(p['test_acc'])
+            by_lambda[lam][p['n']]['test_acc'].append(p['test_acc'])
         if p['val_expl_loss'] is not None:
-            by_n[p['n']]['val_expl_loss'].append(p['val_expl_loss'])
+            by_lambda[lam][p['n']]['val_expl_loss'].append(p['val_expl_loss'])
 
-    ns = sorted(by_n.keys())
+    if expl_lambdas is None:
+        expl_lambdas = sorted(by_lambda.keys(), key=lambda v: (v is None, v))
 
     def _mean(vals):
         return sum(vals) / len(vals) if vals else None
@@ -152,55 +163,79 @@ def plot_scaling_from_json(json_path, output_dir, prefix='figure2'):
             return None
         return (sum((v - mean) ** 2 for v in vals) / len(vals)) ** 0.5
 
-    # Plot test accuracy vs N
-    acc_means = []
-    acc_stds = []
-    acc_ns = []
-    for n in ns:
-        vals = by_n[n]['test_acc']
-        if vals:
-            mean = _mean(vals)
-            acc_ns.append(n)
-            acc_means.append(mean)
-            acc_stds.append(_std(vals, mean))
+    # Plot combined figure with two panels and one curve per expl_lambda
+    fig, (ax_acc, ax_expl) = plt.subplots(1, 2, figsize=(10, 4))
+    plotted_acc = False
+    plotted_expl = False
 
-    if acc_means:
-        plt.figure()
-        plt.errorbar(acc_ns, acc_means, yerr=acc_stds, fmt='-o', capsize=3)
-        plt.xlabel('N training samples')
-        plt.ylabel('test accuracy')
-        plt.title('Test accuracy vs N training samples')
-        outpath = os.path.join(output_dir, f'{prefix}_test_acc_vs_n.png')
-        plt.savefig(outpath)
-        plt.close()
-        logging.info('Wrote scaling plot: %s', outpath)
+    for lam in expl_lambdas:
+        if lam not in by_lambda:
+            logging.warning('expl_lambda %s not found in scaling records', lam)
+            continue
+
+        ns = sorted(by_lambda[lam].keys())
+
+        acc_ns = []
+        acc_means = []
+        acc_stds = []
+        expl_ns = []
+        expl_means = []
+        expl_stds = []
+
+        for n in ns:
+            acc_vals = by_lambda[lam][n]['test_acc']
+            if acc_vals:
+                mean = _mean(acc_vals)
+                acc_ns.append(n)
+                acc_means.append(mean)
+                acc_stds.append(_std(acc_vals, mean))
+
+            expl_vals = by_lambda[lam][n]['val_expl_loss']
+            if expl_vals:
+                mean = _mean(expl_vals)
+                expl_ns.append(n)
+                expl_means.append(mean)
+                expl_stds.append(_std(expl_vals, mean))
+
+        label = f'$\\lambda_{{expl}}$={lam}' if lam is not None else 'lambda_expl=unknown'
+
+        if acc_means:
+            ax_acc.errorbar(acc_ns, acc_means, yerr=acc_stds, fmt='-o', capsize=3, label=label)
+            plotted_acc = True
+
+        if expl_means:
+            ax_expl.errorbar(expl_ns, expl_means, yerr=expl_stds, fmt='-o', capsize=3, label=label)
+            plotted_expl = True
+
+    if plotted_acc:
+        ax_acc.set_xlabel('N training samples')
+        ax_acc.set_ylabel('test accuracy')
+        ax_acc.set_title('Test accuracy vs N training samples')
+        ax_acc.legend()
     else:
         logging.warning('No test_acc values found for scaling plot')
 
-    # Plot val explanation loss vs N
-    expl_means = []
-    expl_stds = []
-    expl_ns = []
-    for n in ns:
-        vals = by_n[n]['val_expl_loss']
-        if vals:
-            mean = _mean(vals)
-            expl_ns.append(n)
-            expl_means.append(mean)
-            expl_stds.append(_std(vals, mean))
-
-    if expl_means:
-        plt.figure()
-        plt.errorbar(expl_ns, expl_means, yerr=expl_stds, fmt='-o', capsize=3)
-        plt.xlabel('N training samples')
-        plt.ylabel('val explanation loss')
-        plt.title('Val explanation loss vs N training samples')
-        outpath = os.path.join(output_dir, f'{prefix}_val_expl_loss_vs_n.png')
-        plt.savefig(outpath)
-        plt.close()
-        logging.info('Wrote scaling plot: %s', outpath)
+    if plotted_expl:
+        ax_expl.set_xlabel('N training samples')
+        ax_expl.set_ylabel('val explanation loss')
+        ax_expl.set_title('Val explanation loss vs N training samples')
+        ax_expl.legend()
     else:
         logging.warning('No val_expl_loss values found for scaling plot')
+
+    if plotted_acc or plotted_expl:
+        fig.tight_layout()
+        outpath = os.path.join(output_dir, f'{prefix}.png')
+        fig.savefig(outpath)
+        plt.close(fig)
+        logging.info('Wrote scaling plot: %s', outpath)
+
+
+def _parse_scaling_lambdas(raw):
+    if raw is None:
+        return None
+    parts = [p.strip() for p in raw.split(',') if p.strip()]
+    return [float(p) for p in parts] if parts else None
 
 
 def main():
@@ -213,6 +248,11 @@ def main():
     parser.add_argument('--skip_examples', action='store_true', help='Skip example image plots')
     parser.add_argument('--scaling_json', default=None, help='Path to epyc scaling JSON output')
     parser.add_argument('--scaling_prefix', default='figure2', help='Prefix for scaling plot filenames')
+    parser.add_argument(
+        '--scaling_lambdas',
+        default=None,
+        help='Comma-separated expl_lambda values to plot (default: all found in JSON)',
+    )
     args = parser.parse_args()
 
     setup_logger()
@@ -282,7 +322,13 @@ def main():
 
     if args.scaling_json:
         logging.info('Plotting scaling results from %s', args.scaling_json)
-        plot_scaling_from_json(args.scaling_json, args.output_dir, prefix=args.scaling_prefix)
+        scaling_lambdas = _parse_scaling_lambdas(args.scaling_lambdas)
+        plot_scaling_from_json(
+            args.scaling_json,
+            args.output_dir,
+            prefix=args.scaling_prefix,
+            expl_lambdas=scaling_lambdas,
+        )
     else:
         logging.info('No scaling JSON provided; skipping Figure 2 plots')
 

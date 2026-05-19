@@ -1,15 +1,15 @@
 apiVersion: batch/v1
 kind: Job
 metadata:
-  name: kg-coop-ct
+  name: kg-coop-ct-rebuild-scaling
   labels:
-    app: kg-coop-ct
+    app: kg-coop-ct-rebuild-scaling
 spec:
   backoffLimit: 0
   template:
     metadata:
       labels:
-        app: kg-coop-ct
+        app: kg-coop-ct-rebuild-scaling
     spec:
       restartPolicy: Never
       tolerations:
@@ -92,7 +92,7 @@ spec:
       volumes:
         - name: workspace
           persistentVolumeClaim:
-            claimName: 
+            claimName: bgupta-pvc
         - name: dshm
           emptyDir:
             medium: Memory
