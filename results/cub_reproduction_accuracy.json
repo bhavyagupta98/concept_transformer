@@ -1,0 +1,28 @@
+[
+  {
+    "model_variant": "with_concepts",
+    "label": "CT with concepts",
+    "checkpoint_path": "./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt",
+    "expl_lambda": 1.0,
+    "baseline_flag": false,
+    "test_accuracy": 0.83569209527097,
+    "num_test_samples": 5794,
+    "data_dir": "/workspace/data",
+    "batch_size": 16,
+    "num_workers": 4,
+    "eval_timestamp": "2026-05-31T20:07:29.642615+00:00"
+  },
+  {
+    "model_variant": "baseline",
+    "label": "CT without concepts",
+    "checkpoint_path": "./cub_cvit/CUB2011Parts_expl0.0/binary_mnist_best_ckpt.ckpt",
+    "expl_lambda": 0.0,
+    "baseline_flag": true,
+    "test_accuracy": 0.8446668967897826,
+    "num_test_samples": 5794,
+    "data_dir": "/workspace/data",
+    "batch_size": 16,
+    "num_workers": 4,
+    "eval_timestamp": "2026-05-31T20:07:29.642615+00:00"
+  }
+]

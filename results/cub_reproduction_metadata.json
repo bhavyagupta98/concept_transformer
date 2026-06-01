@@ -1,0 +1,13 @@
+{
+  "generated_at": "2026-05-31T20:07:29.642615+00:00",
+  "device": "cuda",
+  "with_concepts_checkpoint": "./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt",
+  "baseline_checkpoint": "./cub_cvit/CUB2011Parts_expl0.0/binary_mnist_best_ckpt.ckpt",
+  "with_concepts_accuracy": 0.83569209527097,
+  "baseline_accuracy": 0.8446668967897826,
+  "paper_with_concepts": 0.88,
+  "paper_without_concepts": 0.769,
+  "paper_gain": 0.11099999999999999,
+  "our_gain": -0.00897480151881258,
+  "examples_metadata": "./results/cub_explanation_examples/examples_metadata.json"
+}

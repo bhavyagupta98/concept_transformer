@@ -1,0 +1,60 @@
+{
+  "correct_example": {
+    "idx": 0,
+    "prediction_idx": 0,
+    "ground_truth_idx": 0,
+    "prediction_name": "Black_footed_Albatross",
+    "ground_truth_name": "Black_footed_Albatross",
+    "correct": true,
+    "top_global": [
+      "has_primary_color::brown (0.175)",
+      "has_size::medium_(9_-_16_in) (0.175)",
+      "has_primary_color::black (0.165)",
+      "has_primary_color::buff (0.148)",
+      "has_primary_color::white (0.099)",
+      "has_shape::gull-like (0.080)",
+      "has_primary_color::grey (0.069)",
+      "has_shape::duck-like (0.047)"
+    ],
+    "top_spatial": [
+      "has_eye_color::black (0.976)",
+      "has_throat_color::white (0.919)",
+      "has_forehead_color::white (0.887)",
+      "has_underparts_color::white (0.586)",
+      "has_bill_length::about_the_same_as_head (0.426)",
+      "has_forehead_color::brown (0.221)",
+      "has_crown_color::white (0.216)",
+      "has_head_pattern::plain (0.186)"
+    ],
+    "output_path": "./results/cub_explanation_examples/correct_example.png"
+  },
+  "error_example": {
+    "idx": 3,
+    "prediction_idx": 2,
+    "ground_truth_idx": 0,
+    "prediction_name": "Sooty_Albatross",
+    "ground_truth_name": "Black_footed_Albatross",
+    "correct": false,
+    "top_global": [
+      "has_primary_color::black (0.226)",
+      "has_primary_color::grey (0.222)",
+      "has_size::medium_(9_-_16_in) (0.142)",
+      "has_primary_color::white (0.081)",
+      "has_primary_color::brown (0.072)",
+      "has_shape::gull-like (0.062)",
+      "has_primary_color::buff (0.062)",
+      "has_shape::duck-like (0.057)"
+    ],
+    "top_spatial": [
+      "has_eye_color::black (0.788)",
+      "has_underparts_color::white (0.504)",
+      "has_leg_color::grey (0.500)",
+      "has_throat_color::white (0.493)",
+      "has_bill_length::about_the_same_as_head (0.479)",
+      "has_forehead_color::black (0.434)",
+      "has_throat_color::black (0.408)",
+      "has_leg_color::buff (0.393)"
+    ],
+    "output_path": "./results/cub_explanation_examples/error_example.png"
+  }
+}
