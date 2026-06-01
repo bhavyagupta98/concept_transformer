@@ -30,16 +30,15 @@ def cub_cvit(backbone_name="vit_large_patch16_224", baseline=False, *args, **kwa
         return ExplVIT(model_name=backbone_name, num_classes=200)
 
 
-class ExplVIT(VisionTransformer):
-    """VIT modified to return dummy concept attentions"""
-    def __init__(self, num_classes=200, model_name="vit_base_patch16_224", *args, **kwargs):
-        super().__init__(num_classes=num_classes)
+class ExplVIT(nn.Module):
+    """Baseline ViT wrapper that returns logits plus empty concept outputs."""
 
-        loaded_model = timm.create_model(model_name, pretrained=True, num_classes=num_classes)
-        self.load_state_dict(loaded_model.state_dict())
+    def __init__(self, num_classes=200, model_name="vit_base_patch16_224", *args, **kwargs):
+        super().__init__()
+        self.backbone = timm.create_model(model_name, pretrained=True, num_classes=num_classes)
 
     def forward(self, x):
-        out = super().forward(x)
+        out = self.backbone(x)
         return out, None, None, None
 
 
