@@ -201,3 +201,42 @@ PYTHONPATH=/workspace/concept_transformer python scripts/generate_figures.py \
   --output_dir /workspace/data/figs \
   --scaling_lambdas 0.0,2.0
 ```
+
+## CUB Reproduction Comparison (With Concepts vs Baseline)
+
+Run the baseline (no concept branch) CUB training:
+
+```bash
+cd /workspace/concept_transformer
+. venv/bin/activate
+python3 cvit_cub.py --data_dir /workspace/data --max_epochs 50 --batch_size 8 --baseline --expl_lambda 0.0
+```
+
+Then evaluate both CUB checkpoints and generate report-ready outputs:
+
+```bash
+cd /workspace/concept_transformer
+. venv/bin/activate
+python evaluate_cub_reproduction.py \
+  --with_concepts_ckpt ./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt \
+  --baseline_ckpt ./cub_cvit/CUB2011Parts_expl0.0/binary_mnist_best_ckpt.ckpt \
+  --data_dir /workspace/data \
+  --batch_size 16 \
+  --num_workers 4 \
+  --output_dir ./results \
+  --save_examples
+```
+
+Expected outputs:
+
+- `./results/cub_reproduction_accuracy.csv`
+- `./results/cub_reproduction_accuracy.json`
+- `./results/cub_reproduction_vs_paper.csv`
+- `./results/cub_reproduction_summary.md`
+- `./results/cub_reproduction_metadata.json`
+
+When using `--save_examples`, CUB bird explanation images are saved to:
+
+- `./results/cub_explanation_examples/correct_example.png`
+- `./results/cub_explanation_examples/error_example.png`
+- `./results/cub_explanation_examples/examples_metadata.json`
