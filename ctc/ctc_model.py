@@ -208,8 +208,7 @@ def run_exp(args):
     logger = TensorBoardLogger(".", name="logs")
 
     # Callbacks
-    checkpoint_name = getattr(args, "checkpoint_name", "binary_mnist_best_ckpt")
-    best_checkpoint = os.path.join(".", project_name, run_name, checkpoint_name)
+    best_checkpoint = os.path.join(".", project_name, run_name, "binary_mnist_best_ckpt")
     callbacks = [
         ModelCheckpoint(
             dirpath=os.path.dirname(best_checkpoint),
