@@ -132,7 +132,7 @@ python run_topk_phase1_mnist.py --run_path mnist_ctc/ExplanationMNIST_expl5.0/bi
 ```
 cd /workspace/concept_transformer
 source venv/bin/activate
-python run_topk_phase1_cub.py --run_path ./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt --k_values 1,3,5 --data_dir /workspace/data/ --batch_size 16
+python run_topk_phase1_cub.py --run_path ./cub_cvit/CUB2011Parts_expl1.0/cub_best_ckpt.ckpt --k_values 1,3,5 --data_dir /workspace/data/ --batch_size 16
 ```
 
 ## Figure 2 + Example Images (Wrong/Right)
@@ -218,8 +218,8 @@ Then evaluate both CUB checkpoints and generate report-ready outputs:
 cd /workspace/concept_transformer
 . venv/bin/activate
 python evaluate_cub_reproduction.py \
-  --with_concepts_ckpt ./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt \
-  --baseline_ckpt ./cub_cvit/CUB2011Parts_expl0.0/binary_mnist_best_ckpt.ckpt \
+  --with_concepts_ckpt ./cub_cvit/CUB2011Parts_expl1.0/cub_best_ckpt.ckpt \
+  --baseline_ckpt ./cub_cvit/CUB2011Parts_expl0.0/cub_best_ckpt.ckpt \
   --data_dir /workspace/data \
   --batch_size 16 \
   --num_workers 4 \
