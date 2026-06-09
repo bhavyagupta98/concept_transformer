@@ -1,0 +1,3 @@
+model_variant,label,checkpoint_path,expl_lambda,baseline_flag,test_accuracy,num_test_samples,data_dir,batch_size,num_workers,eval_timestamp
+with_concepts,CT with concepts,./cub_cvit/CUB2011Parts_expl1.0/binary_mnist_best_ckpt.ckpt,1.0,False,0.83569209527097,5794,/workspace/data,16,4,2026-05-31T20:07:29.642615+00:00
+baseline,CT without concepts,./cub_cvit/CUB2011Parts_expl0.0/binary_mnist_best_ckpt.ckpt,0.0,True,0.8446668967897826,5794,/workspace/data,16,4,2026-05-31T20:07:29.642615+00:00

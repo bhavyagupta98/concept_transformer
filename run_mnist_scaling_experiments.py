@@ -1,4 +1,5 @@
 from argparse import Namespace
+import os
 import numpy as np
 import torch
 from epyc import Experiment, JSONLabNotebook, Lab
@@ -21,7 +22,12 @@ class BinaryMNISTS(Experiment):
         # Start experiment
         model, trainer, data_module = run_exp(args)
         test_results = trainer.test(datamodule=data_module, ckpt_path='best')
-        trainer.logger.experiment.finish()
+        # Close the TensorBoard writer for compatibility with different versions.
+        experiment = trainer.logger.experiment
+        if hasattr(experiment, "finish"):
+            experiment.finish()
+        elif hasattr(experiment, "close"):
+            experiment.close()
         del trainer, model
         return test_results[0]
 
@@ -32,6 +38,7 @@ class BinaryMNISTS(Experiment):
 
 
 PROJECT_NAME = "binary_mnist_scaling_ES"
+os.makedirs("experiments", exist_ok=True)
 lab = Lab(notebook=JSONLabNotebook(
     f"experiments/{PROJECT_NAME}.json",
     create=True,
