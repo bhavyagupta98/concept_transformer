@@ -42,6 +42,7 @@ args = parser.parse_args()
 
 args.ctc_model = CTC_MODEL
 args.data_name = DATA_NAME
+args.checkpoint_name = "cub_best_ckpt"
 
 # Set random seeds
 torch.manual_seed(args.seed)
